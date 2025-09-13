@@ -116,6 +116,7 @@ change_direction_timers = [0, 0, 0]
 enemy_animation_indices = [0, 0, 0]
 enemy_animation_timers = [0, 0, 0]
 enemy_animation_speed = 150
+enemy_health = [3, 3, 3]  # здоровье врагов
 
 tree_count = 30
 tree_rects = []
@@ -140,7 +141,7 @@ def draw_button(text, rect):
     sc.blit(text_surf, text_rect)
 
 def reset_game():
-    global player_rect, game_lost, game_won, arrows
+    global player_rect, game_lost, game_won, arrows, enemy_health
     player_rect.topleft = (300, 200)
     positions = [(500, 500), (100, 600), (600, 100)]
     for i in range(3):
@@ -148,6 +149,7 @@ def reset_game():
     game_lost = False
     game_won = False
     arrows = []
+    enemy_health = [3 for _ in enemy_rects]
 
 def get_enemy_direction(enemy_vector):
     if enemy_vector.x > 0:
@@ -301,15 +303,18 @@ while True:
             attack_rect = attack_image.get_rect(center=(player_rect.centerx + offset_x, player_rect.centery + offset_y))
             sc.blit(attack_image, attack_rect.topleft)
 
-            for i in range(len(enemy_rects) - 1, -1, -1):
+            for i in range(len(enemy_rects)-1, -1, -1):
                 if attack_rect.colliderect(enemy_rects[i]):
-                    del enemy_rects[i]
-                    del enemy_speeds[i]
-                    del enemy_directions[i]
-                    del target_directions[i]
-                    del change_direction_timers[i]
-                    del enemy_animation_indices[i]
-                    del enemy_animation_timers[i]
+                    enemy_health[i] -= 1
+                    if enemy_health[i] <= 0:
+                        del enemy_rects[i]
+                        del enemy_speeds[i]
+                        del enemy_directions[i]
+                        del target_directions[i]
+                        del change_direction_timers[i]
+                        del enemy_animation_indices[i]
+                        del enemy_animation_timers[i]
+                        del enemy_health[i]
 
             if not enemy_rects:
                 game_won = True
@@ -327,21 +332,22 @@ while True:
 
             sc.blit(arrow_image, arrow["rect"].topleft)
 
-            # удаляем стрелы за экраном
             if not sc.get_rect().colliderect(arrow["rect"]):
                 arrows.remove(arrow)
                 continue
 
-            # попадание по врагам
-            for i in range(len(enemy_rects) - 1, -1, -1):
+            for i in range(len(enemy_rects)-1, -1, -1):
                 if arrow["rect"].colliderect(enemy_rects[i]):
-                    del enemy_rects[i]
-                    del enemy_speeds[i]
-                    del enemy_directions[i]
-                    del target_directions[i]
-                    del change_direction_timers[i]
-                    del enemy_animation_indices[i]
-                    del enemy_animation_timers[i]
+                    enemy_health[i] -= 1
+                    if enemy_health[i] <= 0:
+                        del enemy_rects[i]
+                        del enemy_speeds[i]
+                        del enemy_directions[i]
+                        del target_directions[i]
+                        del change_direction_timers[i]
+                        del enemy_animation_indices[i]
+                        del enemy_animation_timers[i]
+                        del enemy_health[i]
                     arrows.remove(arrow)
                     break
 
@@ -379,6 +385,11 @@ while True:
                     enemy_animation_indices[i] = (enemy_animation_indices[i] + 1) % len(enemy_images[get_enemy_direction(enemy_directions[i])])
 
                 sc.blit(enemy_images[get_enemy_direction(enemy_directions[i])][enemy_animation_indices[i]], enemy_rects[i].topleft)
+
+                # полоска здоровья
+                pg.draw.rect(sc, RED, (enemy_rects[i].x, enemy_rects[i].y - 10, enemy_rects[i].width, 5))
+                health_ratio = enemy_health[i] / 3
+                pg.draw.rect(sc, GREEN, (enemy_rects[i].x, enemy_rects[i].y - 10, enemy_rects[i].width * health_ratio, 5))
 
         if game_lost:
             lost_text = font.render("Вы проиграли! (ESC - назад)", True, BLACK)
