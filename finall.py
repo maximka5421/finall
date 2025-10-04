@@ -53,14 +53,12 @@ enemy_images = {
 }
 
 attack_images = [
-    load_image("babash1.png", (35, 35)),
-    load_image("babash2.png", (35, 35)),
-    load_image("babash3.png", (35, 35)),
-    load_image("babash4.png", (35, 35)),
-    load_image("babash5.png", (35, 35)),
+    load_image("sword.png", (60, 60)),
+    load_image("sworddown.png", (60, 60)),
+    load_image("swordleft.png", (60, 60)),
+    load_image("swordright.png", (60, 60))
 ]
 
-# --- стрелы (загружаем ОДИН раз) ---
 arrow_images = {
     "up": load_image("strelaverh.png", (20, 20)),
     "down": load_image("strelavnis.png", (20, 20)),
@@ -70,11 +68,9 @@ arrow_images = {
 for img in arrow_images.values():
     img.set_colorkey(WHITE)
 
-# --- оружие ---
-current_weapon = "sword"  # меч по умолчанию
-arrows = []  # список стрел
+current_weapon = "sword"
+arrows = []
 arrow_speed = 10
-
 
 def get_attack_offset(direction, distance):
     offsets = {
@@ -84,7 +80,6 @@ def get_attack_offset(direction, distance):
         "right": (distance, 0),
     }
     return offsets[direction]
-
 
 attack_active = False
 attack_frame_index = 0
@@ -127,7 +122,7 @@ change_direction_timers = [0, 0, 0]
 enemy_animation_indices = [0, 0, 0]
 enemy_animation_timers = [0, 0, 0]
 enemy_animation_speed = 150
-enemy_health = [3, 3, 3]  # здоровье врагов
+enemy_health = [3, 3, 3]
 
 tree_count = 30
 tree_rects = []
@@ -215,8 +210,6 @@ while True:
         elif event.type == pg.MOUSEBUTTONDOWN and (in_game or in_game2):
             if current_weapon == "sword":
                 attack_active = True
-                attack_frame_index = 0
-                attack_animation_timer = 0
             elif current_weapon == "bow":
                 offset_x, offset_y = get_attack_offset(player_direction, 40)
                 arrow_rect = arrow_images[player_direction].get_rect(center=(player_rect.centerx + offset_x, player_rect.centery + offset_y))
@@ -247,6 +240,7 @@ while True:
             sc.blit(small_font.render(line, True, BLACK), (50, 100 + i * 40))
 
     elif in_game or in_game2:
+        
         if in_game2:
             sc.blit(backgroundgame1, (0, 0))
         else:
@@ -300,17 +294,17 @@ while True:
 
         # --- атака мечом ---
         if attack_active and current_weapon == "sword":
-            attack_animation_timer += delta_time
-            if attack_animation_timer >= attack_animation_speed:
-                attack_animation_timer = 0
-                attack_frame_index += 1
-                if attack_frame_index >= len(attack_images):
-                    attack_active = False
-                    attack_frame_index = 0
-
             attack_distance = 30
             offset_x, offset_y = get_attack_offset(player_direction, attack_distance)
-            attack_image = attack_images[attack_frame_index]
+            if player_direction == "up":
+                attack_image = attack_images[0]
+            elif player_direction == "down":
+                attack_image = attack_images[1]
+            elif player_direction == "left":
+                attack_image = attack_images[2]
+            else:
+                attack_image = attack_images[3]
+
             attack_rect = attack_image.get_rect(center=(player_rect.centerx + offset_x, player_rect.centery + offset_y))
             sc.blit(attack_image, attack_rect.topleft)
 
@@ -326,6 +320,8 @@ while True:
                         del enemy_animation_indices[i]
                         del enemy_animation_timers[i]
                         del enemy_health[i]
+
+            attack_active = False
 
             if not enemy_rects:
                 game_won = True
@@ -397,7 +393,6 @@ while True:
 
                 sc.blit(enemy_images[get_enemy_direction(enemy_directions[i])][enemy_animation_indices[i]], enemy_rects[i].topleft)
 
-                # полоска здоровья
                 pg.draw.rect(sc, RED, (enemy_rects[i].x, enemy_rects[i].y - 10, enemy_rects[i].width, 5))
                 health_ratio = enemy_health[i] / 3
                 pg.draw.rect(sc, GREEN, (enemy_rects[i].x, enemy_rects[i].y - 10, enemy_rects[i].width * health_ratio, 5))
