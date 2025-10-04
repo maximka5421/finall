@@ -60,11 +60,21 @@ attack_images = [
     load_image("babash5.png", (35, 35)),
 ]
 
+# --- стрелы (загружаем ОДИН раз) ---
+arrow_images = {
+    "up": load_image("strelaverh.png", (20, 20)),
+    "down": load_image("strelavnis.png", (20, 20)),
+    "left": load_image("strelawlevo.png", (20, 20)),
+    "right": load_image("strelavpravo.png", (20, 20))
+}
+for img in arrow_images.values():
+    img.set_colorkey(WHITE)
+
 # --- оружие ---
 current_weapon = "sword"  # меч по умолчанию
 arrows = []  # список стрел
 arrow_speed = 10
-arrow_image = load_image("luk.png", (25, 10))  # картинка стрелы
+
 
 def get_attack_offset(direction, distance):
     offsets = {
@@ -74,6 +84,7 @@ def get_attack_offset(direction, distance):
         "right": (distance, 0),
     }
     return offsets[direction]
+
 
 attack_active = False
 attack_frame_index = 0
@@ -168,6 +179,7 @@ def check_collision_with_trees(enemy_rect, tree_rects):
             return True
     return False
 
+
 # --- Игровой цикл ---
 while True:
     delta_time = clock.tick(FPS)
@@ -207,9 +219,10 @@ while True:
                 attack_animation_timer = 0
             elif current_weapon == "bow":
                 offset_x, offset_y = get_attack_offset(player_direction, 40)
-                arrow_rect = arrow_image.get_rect(center=(player_rect.centerx + offset_x, player_rect.centery + offset_y))
+                arrow_rect = arrow_images[player_direction].get_rect(center=(player_rect.centerx + offset_x, player_rect.centery + offset_y))
                 arrows.append({"rect": arrow_rect, "dir": player_direction})
 
+    # --- Рендер ---
     if in_menu or in_settings or in_rules:
         sc.blit(background, (0, 0))
     else:
@@ -220,8 +233,7 @@ while True:
             draw_button(name, rect)
 
     elif in_settings:
-        settings_text = font.render("Настройки (ESC - назад)", True, BLACK)
-        sc.blit(settings_text, (50, 180))
+        sc.blit(font.render("Настройки (ESC - назад)", True, BLACK), (50, 180))
 
     elif in_rules:
         rules = [
@@ -232,8 +244,7 @@ while True:
             "4. ESC - меню.",
         ]
         for i, line in enumerate(rules):
-            text = small_font.render(line, True, BLACK)
-            sc.blit(text, (50, 100 + i * 40))
+            sc.blit(small_font.render(line, True, BLACK), (50, 100 + i * 40))
 
     elif in_game or in_game2:
         if in_game2:
@@ -241,6 +252,7 @@ while True:
         else:
             sc.blit(backgroundgame, (0, 0))
 
+        # --- движение игрока ---
         keys = pg.key.get_pressed()
         moving = False
         old_position = player_rect.topleft
@@ -284,8 +296,7 @@ while True:
 
             player_rect.clamp_ip(sc.get_rect())
 
-        current_images = player_images[player_direction]
-        sc.blit(current_images[animation_index], player_rect.topleft)
+        sc.blit(player_images[player_direction][animation_index], player_rect.topleft)
 
         # --- атака мечом ---
         if attack_active and current_weapon == "sword":
@@ -319,7 +330,7 @@ while True:
             if not enemy_rects:
                 game_won = True
 
-        # --- стрелы (лук) ---
+        # --- стрелы ---
         for arrow in arrows[:]:
             if arrow["dir"] == "up":
                 arrow["rect"].y -= arrow_speed
@@ -330,7 +341,7 @@ while True:
             elif arrow["dir"] == "right":
                 arrow["rect"].x += arrow_speed
 
-            sc.blit(arrow_image, arrow["rect"].topleft)
+            sc.blit(arrow_images[arrow["dir"]], arrow["rect"].topleft)
 
             if not sc.get_rect().colliderect(arrow["rect"]):
                 arrows.remove(arrow)
@@ -354,14 +365,14 @@ while True:
             if not enemy_rects:
                 game_won = True
 
-        # деревья / камни
+        # --- деревья ---
         for tree_rect in tree_rects:
             if in_game2:
                 sc.blit(game_kamen, tree_rect.topleft)
             else:
                 sc.blit(game_derevo, tree_rect.topleft)
 
-        # враги
+        # --- враги ---
         if not game_lost and not game_won:
             for i in range(len(enemy_rects)):
                 change_direction_timers[i] += delta_time
@@ -392,12 +403,10 @@ while True:
                 pg.draw.rect(sc, GREEN, (enemy_rects[i].x, enemy_rects[i].y - 10, enemy_rects[i].width * health_ratio, 5))
 
         if game_lost:
-            lost_text = font.render("Вы проиграли! (ESC - назад)", True, BLACK)
-            sc.blit(lost_text, (50, 350))
+            sc.blit(font.render("Вы проиграли! (ESC - назад)", True, BLACK), (50, 350))
 
         if game_won and not game_lost:
-            win_text = font.render("Вы победили! (ESC - назад)", True, BLACK)
-            sc.blit(win_text, (50, 350))
+            sc.blit(font.render("Вы победили! (ESC - назад)", True, BLACK), (50, 350))
 
     pg.display.update()
 
