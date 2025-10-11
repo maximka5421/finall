@@ -80,7 +80,8 @@ def get_attack_offset(direction, distance):
         "right": (distance, 0),
     }
     return offsets[direction]
-
+attack_duration = 100  # длительность атаки в миллисекундах
+attack_timer = 0
 attack_active = False
 attack_frame_index = 0
 attack_animation_timer = 0
@@ -210,6 +211,7 @@ while True:
         elif event.type == pg.MOUSEBUTTONDOWN and (in_game or in_game2):
             if current_weapon == "sword":
                 attack_active = True
+                attack_timer = attack_duration
             elif current_weapon == "bow":
                 offset_x, offset_y = get_attack_offset(player_direction, 40)
                 arrow_rect = arrow_images[player_direction].get_rect(center=(player_rect.centerx + offset_x, player_rect.centery + offset_y))
@@ -321,7 +323,9 @@ while True:
                         del enemy_animation_timers[i]
                         del enemy_health[i]
 
-            attack_active = False
+            attack_timer -= delta_time
+            if attack_timer <= 0:
+                attack_active = False
 
             if not enemy_rects:
                 game_won = True
@@ -385,6 +389,8 @@ while True:
                 enemy_directions[i] = enemy_directions[i].lerp(target_directions[i], 0.05)
                 enemy_rects[i].x += enemy_directions[i].x * enemy_speeds[i]
                 enemy_rects[i].y += enemy_directions[i].y * enemy_speeds[i]
+
+                enemy_rects[i].clamp_ip(sc.get_rect())
 
                 enemy_animation_timers[i] += delta_time
                 if enemy_animation_timers[i] >= enemy_animation_speed:
