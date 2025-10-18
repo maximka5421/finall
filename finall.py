@@ -80,7 +80,8 @@ def get_attack_offset(direction, distance):
         "right": (distance, 0),
     }
     return offsets[direction]
-attack_duration = 100  # длительность атаки в миллисекундах
+
+attack_duration = 100
 attack_timer = 0
 attack_active = False
 attack_frame_index = 0
@@ -94,6 +95,13 @@ in_game2 = False
 in_rules = False
 game_lost = False
 game_won = False
+
+# --- новые переменные для волн ---
+current_wave = 1
+max_waves = 5
+wave_delay = 2000
+wave_timer = 0
+wave_starting = False
 
 button_width = 200
 button_height = 60
@@ -111,19 +119,14 @@ player_speed = 5
 player_direction = "down"
 
 enemy_size = 60
-enemy_rects = [
-    pg.Rect(500, 500, enemy_size, enemy_size),
-    pg.Rect(100, 600, enemy_size, enemy_size),
-    pg.Rect(600, 100, enemy_size, enemy_size),
-]
-enemy_speeds = [2, 1.8, 2.2]
-enemy_directions = [pg.Vector2(1, 0) for _ in range(3)]
-target_directions = [pg.Vector2(1, 0) for _ in range(3)]
-change_direction_timers = [0, 0, 0]
-enemy_animation_indices = [0, 0, 0]
-enemy_animation_timers = [0, 0, 0]
-enemy_animation_speed = 150
-enemy_health = [3, 3, 3]
+enemy_rects = []
+enemy_speeds = []
+enemy_directions = []
+target_directions = []
+change_direction_timers = []
+enemy_animation_indices = []
+enemy_animation_timers = []
+enemy_health = []
 
 tree_count = 30
 tree_rects = []
@@ -148,15 +151,14 @@ def draw_button(text, rect):
     sc.blit(text_surf, text_rect)
 
 def reset_game():
-    global player_rect, game_lost, game_won, arrows, enemy_health
+    global player_rect, game_lost, game_won, arrows, enemy_health, current_wave, wave_starting
     player_rect.topleft = (300, 200)
-    positions = [(500, 500), (100, 600), (600, 100)]
-    for i in range(3):
-        enemy_rects[i].topleft = positions[i]
     game_lost = False
     game_won = False
     arrows = []
-    enemy_health = [3 for _ in enemy_rects]
+    current_wave = 1
+    wave_starting = False
+    spawn_wave(current_wave)
 
 def get_enemy_direction(enemy_vector):
     if enemy_vector.x > 0:
@@ -175,6 +177,28 @@ def check_collision_with_trees(enemy_rect, tree_rects):
             return True
     return False
 
+def spawn_wave(wave_num):
+    enemy_rects.clear()
+    enemy_speeds.clear()
+    enemy_directions.clear()
+    target_directions.clear()
+    change_direction_timers.clear()
+    enemy_animation_indices.clear()
+    enemy_animation_timers.clear()
+    enemy_health.clear()
+
+    enemy_count = 3 + wave_num * 2
+    for _ in range(enemy_count):
+        x = random.randint(0, 700)
+        y = random.randint(0, 700)
+        enemy_rects.append(pg.Rect(x, y, enemy_size, enemy_size))
+        enemy_speeds.append(random.uniform(1.5, 2.5))
+        enemy_directions.append(pg.Vector2(1, 0))
+        target_directions.append(pg.Vector2(1, 0))
+        change_direction_timers.append(0)
+        enemy_animation_indices.append(0)
+        enemy_animation_timers.append(0)
+        enemy_health.append(3 + wave_num)
 
 # --- Игровой цикл ---
 while True:
@@ -242,7 +266,7 @@ while True:
             sc.blit(small_font.render(line, True, BLACK), (50, 100 + i * 40))
 
     elif in_game or in_game2:
-        
+
         if in_game2:
             sc.blit(backgroundgame1, (0, 0))
         else:
@@ -327,8 +351,13 @@ while True:
             if attack_timer <= 0:
                 attack_active = False
 
-            if not enemy_rects:
-                game_won = True
+            if not enemy_rects and not wave_starting:
+                if current_wave < max_waves:
+                    wave_starting = True
+                    wave_timer = pg.time.get_ticks()
+                    current_wave += 1
+                else:
+                    game_won = True
 
         # --- стрелы ---
         for arrow in arrows[:]:
@@ -362,8 +391,20 @@ while True:
                     arrows.remove(arrow)
                     break
 
-            if not enemy_rects:
-                game_won = True
+            if not enemy_rects and not wave_starting:
+                if current_wave < max_waves:
+                    wave_starting = True
+                    wave_timer = pg.time.get_ticks()
+                    current_wave += 1
+                else:
+                    game_won = True
+
+        # --- запуск новой волны ---
+        if wave_starting:
+            now = pg.time.get_ticks()
+            if now - wave_timer > wave_delay:
+                spawn_wave(current_wave)
+                wave_starting = False
 
         # --- деревья ---
         for tree_rect in tree_rects:
@@ -389,26 +430,28 @@ while True:
                 enemy_directions[i] = enemy_directions[i].lerp(target_directions[i], 0.05)
                 enemy_rects[i].x += enemy_directions[i].x * enemy_speeds[i]
                 enemy_rects[i].y += enemy_directions[i].y * enemy_speeds[i]
-
                 enemy_rects[i].clamp_ip(sc.get_rect())
 
                 enemy_animation_timers[i] += delta_time
-                if enemy_animation_timers[i] >= enemy_animation_speed:
+                if enemy_animation_timers[i] >= 150:
                     enemy_animation_timers[i] = 0
                     enemy_animation_indices[i] = (enemy_animation_indices[i] + 1) % len(enemy_images[get_enemy_direction(enemy_directions[i])])
 
                 sc.blit(enemy_images[get_enemy_direction(enemy_directions[i])][enemy_animation_indices[i]], enemy_rects[i].topleft)
 
                 pg.draw.rect(sc, RED, (enemy_rects[i].x, enemy_rects[i].y - 10, enemy_rects[i].width, 5))
-                health_ratio = enemy_health[i] / 3
+                health_ratio = enemy_health[i] / (3 + current_wave)
                 pg.draw.rect(sc, GREEN, (enemy_rects[i].x, enemy_rects[i].y - 10, enemy_rects[i].width * health_ratio, 5))
 
+        # --- текст волны ---
+        wave_text = small_font.render(f"Волна: {current_wave}/{max_waves}", True, BLACK)
+        sc.blit(wave_text, (10, 10))
+
         if game_lost:
-            sc.blit(font.render("Вы проиграли! (ESC - назад)", True, BLACK), (50, 350))
+            sc.blit(font.render("Ти програв!", True, RED), (300, 400))
+        elif game_won:
+            sc.blit(font.render("Ти переміг!", True, GREEN), (300, 400))
 
-        if game_won and not game_lost:
-            sc.blit(font.render("Вы победили! (ESC - назад)", True, BLACK), (50, 350))
-
-    pg.display.update()
+    pg.display.flip()
 
 
